@@ -1,0 +1,45 @@
+{
+  "name": "second-brain-kit",
+  "displayName": "Второй мозг на Claude Code",
+  "description": "Каркас второго мозга на Claude Code + Obsidian: ставится одной командой, сам себя настраивает интервью. Ядро без ключей + опциональные модули.",
+  "version": "0.1.0",
+  "owner": "vasin",
+  "plugins": [
+    {
+      "name": "core",
+      "source": "./skills/setup-second-brain",
+      "description": "Ядро: скилл-установщик /setup-second-brain (разворачивает каркас _BRAIN/, мост памяти, метод, SessionStart-хук).",
+      "default": true
+    },
+    {
+      "name": "capture",
+      "source": "./skills/capture",
+      "description": "Захват и работа с заметками: /capture, /save, /find, /ingest, /health, /decide, /daily, /recap, /review."
+    },
+    {
+      "name": "thinking",
+      "source": "./skills/thinking",
+      "description": "Мыслительные инструменты: /challenge, /emerge, /panel, /connect."
+    },
+    {
+      "name": "research",
+      "source": "./skills/research",
+      "description": "Исследование без ключей: /research по бесплатным источникам + verification-first."
+    },
+    {
+      "name": "content",
+      "source": "./plugins/content",
+      "description": "Контент-скиллы: SEO-manager (органический трафик: аудит, ключи, контент-кластеры, link building), Сценарии, Продюсер (разбор канала). Текстовый суперскилл Writer — в полной версии через бота, не в публичном репо."
+    },
+    {
+      "name": "video-pipeline",
+      "source": "./modules/video-pipeline",
+      "description": "МОДУЛЬ: видео-пайплайн (картинка→озвучка→говорящая голова). Нужна подписка Higgsfield (key-flow)."
+    },
+    {
+      "name": "sites-seo",
+      "source": "./modules/sites-seo",
+      "description": "МОДУЛЬ: SEO-надстройки + правила работы и логгирования при работе с сайтами."
+    }
+  ]
+}
