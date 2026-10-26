@@ -50,9 +50,11 @@ if [ "${1:-}" = "--vps" ]; then
     SSH="ssh -J biletop-vps college-vps"; SCP="scp -o ProxyJump=biletop-vps"
   fi
   ts="$(date +%Y%m%d-%H%M%S)"
-  ${SSH} "cd ${VPS_DIR} && for f in kit.tar.gz install.sh update.sh install-skills.sh update.ps1; do [ -f \$f ] && cp -p \$f \$f.bak.${ts}; done; true"
+  # бэкапы — вне публичной папки: всё, что лежит в VPS_DIR, скачивается по имени
+  BAK="/opt/vasin-hub/private-backups/sb-kit"
+  ${SSH} "mkdir -p ${BAK} && cd ${VPS_DIR} && for f in kit.tar.gz install.sh update.sh install-skills.sh update.ps1; do [ -f \$f ] && cp -p \$f ${BAK}/\$f.bak.${ts}; done; true"
   ${SCP} build/kit.tar.gz build/install.sh build/update.sh build/install-skills.sh build/update.ps1 "college-vps:${VPS_DIR}/"
-  echo "  бэкапы: *.bak.${ts}"
+  echo "  бэкапы: ${BAK}/*.bak.${ts}"
 fi
 
 echo "✓ собрано. Деплой зеркала: npx wrangler@3 deploy"
