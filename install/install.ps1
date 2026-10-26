@@ -61,10 +61,8 @@ if (-not (Test-Path -LiteralPath $TemplateDir)) {
 
 # --- 2. куда ставим ---
 $DefaultVault = Join-Path $env:USERPROFILE "SecondBrain"
-if ([string]::IsNullOrWhiteSpace($VaultDir)) {
-  $inp = Read-Host "Куда ставить второй мозг? [$DefaultVault]"
-  if ([string]::IsNullOrWhiteSpace($inp)) { $VaultDir = $DefaultVault } else { $VaultDir = $inp }
-}
+# Без вопросов с клавиатуры: ставит агент, а где хранить, спрашивает уже интервью.
+if ([string]::IsNullOrWhiteSpace($VaultDir)) { $VaultDir = if ($env:SB_VAULT) { $env:SB_VAULT } else { $DefaultVault } }
 $BrainDir = Join-Path $VaultDir "_BRAIN"
 New-Item -ItemType Directory -Force -Path $BrainDir | Out-Null
 Ok "Каркас будет в: $BrainDir"
@@ -200,6 +198,22 @@ if (Test-Path -LiteralPath $HookTpl) {
     Ok "Движок памяти уже подключён."
   }
 }
+
+# --- 4c. команды-помощники (скиллы) → %USERPROFILE%\.claude\skills ---
+$SkillsDst = Join-Path $ClaudeCfgDir "skills"
+New-Item -ItemType Directory -Force -Path $SkillsDst | Out-Null
+$copied = 0
+foreach ($base in @((Join-Path $RepoDir "skills"), (Join-Path $RepoDir "plugins\content\skills"))) {
+  if (-not (Test-Path -LiteralPath $base)) { continue }
+  foreach ($d in Get-ChildItem -LiteralPath $base -Directory) {
+    if (-not (Test-Path -LiteralPath (Join-Path $d.FullName "SKILL.md"))) { continue }
+    $dst = Join-Path $SkillsDst $d.Name
+    if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
+    Copy-Item -LiteralPath $d.FullName -Destination $dst -Recurse -Force
+    $copied++
+  }
+}
+Ok "Команды-помощники установлены: $copied → $SkillsDst"
 
 # --- финал ---
 Say ""

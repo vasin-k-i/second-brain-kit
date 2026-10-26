@@ -110,7 +110,7 @@ while IFS= read -r -d '' src; do
     cp -p -- "${src}" "${dst}"
     created=$((created+1))
   fi
-done < <(find "${TEMPLATE_DIR}" -type f -print0)
+done < <(find "${TEMPLATE_DIR}" -type f ! -name '.DS_Store' -print0)
 
 ok "Файлов создано: ${created}, пропущено (уже было): ${skipped}"
 
@@ -119,6 +119,11 @@ ROOT_TPL="${REPO_DIR}/vault-template/CLAUDE.template.md"
 if [ -f "${ROOT_TPL}" ] && [ ! -e "${VAULT_DIR}/CLAUDE.md" ]; then
   cp -p -- "${ROOT_TPL}" "${VAULT_DIR}/CLAUDE.md"
   ok "Правила работы сохранены: ${VAULT_DIR}/CLAUDE.md"
+fi
+# Codex читает AGENTS.md, а не CLAUDE.md — кладём те же правила рядом,
+# чтобы папка мозга, открытая в Codex, работала по тому же методу.
+if [ -f "${VAULT_DIR}/CLAUDE.md" ] && [ ! -e "${VAULT_DIR}/AGENTS.md" ]; then
+  cp -p -- "${VAULT_DIR}/CLAUDE.md" "${VAULT_DIR}/AGENTS.md"
 fi
 
 # --- 4. мост памяти: бэкап + дописать @import (идемпотентно) ---
@@ -234,6 +239,20 @@ for d in "${REPO_DIR}/skills"/*/ "${REPO_DIR}/plugins/content/skills"/*/; do
 done
 ok "Команды-помощники установлены: ${sk_copied} (пропущено ${sk_skipped}) → ${SKILLS_DST}"
 
+# версия кита: штамп для доктора и поддержки (простой текст, без JSON).
+# Нет VERSION в ките (старая сборка / чужой архив) — не падаем, пишем unknown.
+VERSION_STAMP="${CLAUDE_CFG_DIR}/.sbk-version"
+SBK_VERSION="unknown"
+if [ -f "${REPO_DIR}/VERSION" ]; then
+  v="$(head -n 1 "${REPO_DIR}/VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
+  [ -n "${v}" ] && SBK_VERSION="${v}"
+fi
+{
+  printf 'version=%s\n' "${SBK_VERSION}"
+  printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "${VERSION_STAMP}"
+ok "Версия кита: ${SBK_VERSION} (штамп: ${VERSION_STAMP})"
+
 # --- 6. pre-grant прав на папку второго мозга (чтобы /setup не переспрашивал на каждый файл) ---
 SETTINGS_FILE="${CLAUDE_CFG_DIR}/settings.json"
 if command -v python3 >/dev/null 2>&1; then
@@ -259,6 +278,21 @@ else
   warn "python3 не найден — во время настройки жми «Always allow» (безопасно, правит только твои заметки)."
 fi
 
+# --- 7. Codex, если он есть на машине: тот же мозг, те же команды ---
+# Не нужен Codex — SB_NO_CODEX=1 перед установкой.
+if [ "${SB_NO_CODEX:-0}" != 1 ] && { [ -d "${HOME}/.codex" ] || command -v codex >/dev/null 2>&1; }; then
+  if [ -f "${REPO_DIR}/install/install-codex.sh" ]; then
+    say ""
+    say "Нашёл Codex — подключаю к тому же мозгу…"
+    if bash "${REPO_DIR}/install/install-codex.sh" "${VAULT_DIR}" >/dev/null 2>&1; then
+      ok "Codex подключён (команды там вызываются через \$, напр. \$capture)."
+      warn "При первом запуске Codex спросит, доверяешь ли новому хуку — ответь да."
+    else
+      warn "Codex найден, но подключить не вышло. Вручную: bash \"${REPO_DIR}/install/install-codex.sh\""
+    fi
+  fi
+fi
+
 # --- финал ---
 say ""
 say "${B}Готово ✓ Заметки, память и команды-помощники установлены.${N}"
@@ -275,3 +309,6 @@ say "    ${G}/setup-second-brain${N}"
 say ""
 say "Claude задаст пару вопросов (первым — где хранить второй мозг: на"
 say "компьютере или в облаке) и наполнит его под тебя."
+say ""
+say "Если что-то пойдёт не так («агент меня не помнит») — проверка и починка:"
+say "    ${G}/brain-doctor${N}   или   bash ~/.second-brain-kit/install/doctor.sh --fix"

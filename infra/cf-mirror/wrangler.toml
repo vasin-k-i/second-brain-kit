@@ -1,0 +1,8 @@
+name = "sb-kit"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Деплой:
+#   cd ~/Projects/second-brain-kit/infra/cf-mirror && ./build.sh && npx wrangler@3 deploy
+# URL: https://sb-kit.consul456.workers.dev/sb-lx9wf4cApInIY9VF883j/install.sh
+# (wrangler 3 — на маке Node 20, wrangler 4 требует Node >= 22)

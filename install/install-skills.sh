@@ -16,8 +16,8 @@
 #
 set -euo pipefail
 
-KIT_URL="${SB_KIT_URL:-https://github.com/vasin-k-i/second-brain-kit/archive/refs/heads/main.tar.gz}"
-case "${KIT_URL}" in http*://*) : ;; *) echo "✗ KIT_URL не задан" >&2; exit 1 ;; esac
+# Откуда брать кит — по порядку: GitHub → зеркало Cloudflare → vasinki.ru. Свой архив: SB_KIT_URL=...
+KIT_URLS="${SB_KIT_URL:-https://github.com/vasin-k-i/second-brain-kit/archive/refs/heads/main.tar.gz https://sb-kit.consul456.workers.dev/sb-lx9wf4cApInIY9VF883j/kit.tar.gz https://vasinki.ru/sb-lx9wf4cApInIY9VF883j/kit.tar.gz}"
 command -v curl >/dev/null 2>&1 || { echo "✗ нужен curl" >&2; exit 1; }
 command -v tar  >/dev/null 2>&1 || { echo "✗ нужен tar"  >&2; exit 1; }
 
@@ -27,12 +27,20 @@ curl -V 2>/dev/null | grep -qi schannel && CURL="${CURL} --ssl-no-revoke"
 
 TMP="$(mktemp -d)"; trap 'rm -rf "${TMP}"' EXIT
 echo "Скачиваю скиллы «Второй мозг»…"
-${CURL} "${KIT_URL}" -o "${TMP}/kit.tar.gz"
-tar -xzf "${TMP}/kit.tar.gz" -C "${TMP}"
-
-# тарбол распаковывается в second-brain-kit/
-SRC="${TMP}/second-brain-kit"
-[ -d "${SRC}" ] || SRC="$(dirname "$(find "${TMP}" -name install -type d | head -1)")"
+got=""
+for u in ${KIT_URLS}; do
+  if ${CURL} --connect-timeout 20 --max-time 300 "${u}" -o "${TMP}/kit.tar.gz" 2>/dev/null &&
+     tar -tzf "${TMP}/kit.tar.gz" >/dev/null 2>&1; then
+    got="${u}"; break
+  fi
+  echo "…не открылось: ${u%%/archive/*} — пробую следующий адрес"
+done
+[ -n "${got}" ] || { echo "✗ кит не скачался ни с одного адреса. Проверь интернет или VPN и повтори." >&2; exit 1; }
+tar -xzf "${TMP}/kit.tar.gz" -C "${TMP}" 2>/dev/null
+# корень кита — по файлу install/install.sh (у архива GitHub верхняя папка second-brain-kit-main/)
+INNER="$(find "${TMP}" -type f -path '*/install/install.sh' | head -1)"
+[ -n "${INNER}" ] || { echo "✗ в скачанном архиве нет install/install.sh" >&2; exit 1; }
+SRC="$(cd -- "$(dirname -- "${INNER}")/.." && pwd -P)"
 
 SKILLS_DST="${HOME}/.claude/skills"
 mkdir -p "${SKILLS_DST}"

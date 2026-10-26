@@ -1,0 +1,6 @@
+# сгенерированное build.sh
+kit-b64.js
+install-sh.js
+build/
+node_modules/
+.wrangler/

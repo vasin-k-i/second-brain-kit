@@ -2,7 +2,7 @@
   «Второй мозг» — ОБНОВЛЕНИЕ для уже установивших (Windows / PowerShell).
 
   Делает (идемпотентно, с бэкапами):
-    1. Обновляет скиллы в %USERPROFILE%\.claude\skills\ (в т.ч. новый writer + seo-manager).
+    1. Обновляет скиллы в %USERPROFILE%\.claude\skills\.
     2. Ставит SessionStart-хук (движок памяти) и прописывает его в settings.json.
     3. Дописывает правила записи в мост ~\.claude\CLAUDE.md — ТОЛЬКО внутри маркеров кита.
   Остальные инструкции и заметки не трогает.
@@ -15,7 +15,11 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 function Ok($m){ Write-Host "[ok] $m" -ForegroundColor Green }
 function Warn($m){ Write-Host "[!] $m" -ForegroundColor Yellow }
 
-$KitUrl = if ($env:SB_KIT_URL) { $env:SB_KIT_URL } else { "https://github.com/vasin-k-i/second-brain-kit/archive/refs/heads/main.tar.gz" }
+# Откуда брать кит — по порядку: GitHub → зеркало Cloudflare → vasinki.ru. Свой архив: SB_KIT_URL=...
+$KitUrls = if ($env:SB_KIT_URL) { @($env:SB_KIT_URL) } else { @(
+  "https://github.com/vasin-k-i/second-brain-kit/archive/refs/heads/main.tar.gz",
+  "https://sb-kit.consul456.workers.dev/sb-lx9wf4cApInIY9VF883j/kit.tar.gz",
+  "https://vasinki.ru/sb-lx9wf4cApInIY9VF883j/kit.tar.gz") }
 $ClaudeCfgDir = Join-Path $env:USERPROFILE ".claude"
 $GlobalMd = Join-Path $ClaudeCfgDir "CLAUDE.md"
 $Settings = Join-Path $ClaudeCfgDir "settings.json"
@@ -27,16 +31,21 @@ New-Item -ItemType Directory -Force -Path $Tmp | Out-Null
 try {
   Write-Host "Обновляю «Второй мозг»…"
   $tar = Join-Path $Tmp "kit.tar.gz"
-  Invoke-WebRequest -Uri $KitUrl -OutFile $tar -UseBasicParsing
-  tar -xzf $tar -C $Tmp
-  # top-dir GitHub-тарбола = <repo>-<branch>/ (имя меняется) → ищем корень кита по install\install.sh
-  $Src = Join-Path $Tmp "second-brain-kit"
-  if (-not (Test-Path -LiteralPath $Src)) {
-    $inner = Get-ChildItem -LiteralPath $Tmp -Recurse -Filter "install.sh" -File |
-      Where-Object { $_.DirectoryName -like "*\install" } | Select-Object -First 1
-    if ($inner) { $Src = Split-Path -Parent (Split-Path -Parent $inner.FullName) }
+  $got = $false
+  foreach ($u in $KitUrls) {
+    try {
+      Invoke-WebRequest -Uri $u -OutFile $tar -UseBasicParsing -TimeoutSec 120
+      tar -tzf $tar *> $null
+      if ($LASTEXITCODE -eq 0) { $got = $true; break }
+    } catch { }
+    Write-Host "…не открылось: $u — пробую следующий адрес"
   }
-  if (-not (Test-Path -LiteralPath $Src)) { throw "Не распаковался кит" }
+  if (-not $got) { throw "Кит не скачался ни с одного адреса. Проверь интернет или VPN и повтори." }
+  tar -xzf $tar -C $Tmp
+  # корень кита — по файлу install\install.ps1 (у архива GitHub верхняя папка second-brain-kit-main)
+  $inner = Get-ChildItem -LiteralPath $Tmp -Recurse -File -Filter "install.ps1" | Where-Object { $_.Directory.Name -eq "install" } | Select-Object -First 1
+  if (-not $inner) { throw "Не распаковался кит" }
+  $Src = $inner.Directory.Parent.FullName
 
   # --- 1. скиллы: перезаписываем ---
   New-Item -ItemType Directory -Force -Path $SkillsDst | Out-Null
@@ -52,7 +61,7 @@ try {
       }
     }
   }
-  Ok "Скиллы обновлены: $copied (writer и seo-manager — свежие)"
+  Ok "Скиллы обновлены: $copied"
 
   # --- 2. найти _BRAIN ---
   $BrainDir = ""

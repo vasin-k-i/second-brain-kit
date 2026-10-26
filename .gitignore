@@ -1,3 +1,22 @@
 .DS_Store
 *.bak
 *.tar.gz
+
+# внутреннее — в открытый репозиторий не идёт
+marketing/
+screenshots_clean/
+install/ДОСТАВКА.md
+*.png
+*.jpeg
+*.jpg
+
+# Writer (школа Ильяхова) и конспекты чужих книг — только в закрытом паке, не публикуем
+plugins/content/skills/writer/
+plugins/content/skills/seo-manager/references/knowledge/
+
+# сгенерированное сборкой зеркала
+infra/cf-mirror/kit-b64.js
+infra/cf-mirror/install-sh.js
+infra/cf-mirror/build/
+infra/cf-mirror/node_modules/
+infra/cf-mirror/.wrangler/
